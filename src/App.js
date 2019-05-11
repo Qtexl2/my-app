@@ -9,7 +9,7 @@ class App extends Component {
     this.remoteVideoref = React.createRef();
     this.socket = null;
     this.idCorrespondent = null;
-    this.sendIceCondidate = false;
+    this.isSendIceCandidate = false;
   }
 
 
@@ -21,9 +21,13 @@ class App extends Component {
     this.pc = new RTCPeerConnection(pc_config);
 
     this.pc.onicecandidate = (e) => {
-      if (e.candidate && this.idCorrespondent !== null && !this.sendIceCondidate) {
-        this.sendIceCondidate = true;
-        console.log(JSON.stringify(e.candidate));
+      console.log(1);
+      if (e.candidate && this.idCorrespondent !== null && !this.isSendIceCandidate) {
+        console.log(2);
+        this.isSendIceCandidate = true;
+        const candidate = JSON.stringify(e.candidate);
+        const iceCandidate = this.createJson(this.idCorrespondent, candidate, 'ICE_CANDIDATE');
+        this.socket.send(JSON.stringify(iceCandidate));
       }
     };
 
@@ -66,19 +70,27 @@ class App extends Component {
         case 'UPDATE_USERS': this.updateUsers(json.users, usersButton); break;
         case 'OFFER': this.setOffer(json); break;
         case 'ANSWER': this.setAnswer(json); break;
+        case 'ICE_CANDIDATE': this.setIceCandidate(json); break;
       }
     };
   };
 
+  setIceCandidate = (json) => {
+    console.log("ПРИНЯЛ АЙСОВ")
 
+    const iceCandidate = json.message;
+    console.log(iceCandidate)
+    this.pc.addIceCandidate(new RTCIceCandidate(iceCandidate));
+
+  };
 
   setAnswer = async (answerJson) => {
-    const offer = answerJson.offer;
+    const offer = answerJson.message;
     this.pc.setRemoteDescription(new RTCSessionDescription(offer));
   };
 
   setOffer = async (offerJson) => {
-    const offer = offerJson.offer;
+    const offer = offerJson.message;
     this.pc.setRemoteDescription(new RTCSessionDescription(offer));
     const answer = await this.createAnswer();
     const jsonAnswer = this.createJson(offerJson.sessionId, answer, 'ANSWER');
@@ -115,13 +127,14 @@ class App extends Component {
     console.log('Offer');
     const sdp = await this.pc.createOffer({offerToReceiveVideo: 1});
     this.pc.setLocalDescription(sdp);
+    // this.socket.emit('signal', {'sdp': sdp});
     return sdp;
   };
 
-  createJson = (sessionId, offer, type) => {
+  createJson = (sessionId, message, type) => {
     const jsonData = {};
     jsonData["sessionId"] = sessionId;
-    jsonData["offer"] = offer;
+    jsonData["message"] = message;
     jsonData["typeMessage"] = type;
     return jsonData;
   };
