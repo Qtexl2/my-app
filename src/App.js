@@ -17,13 +17,10 @@ class App extends Component {
 
     const pc_config = null;
 
-
     this.pc = new RTCPeerConnection(pc_config);
 
     this.pc.onicecandidate = (e) => {
-      console.log(1);
       if (e.candidate && this.idCorrespondent !== null && !this.isSendIceCandidate) {
-        console.log(2);
         this.isSendIceCandidate = true;
         const candidate = JSON.stringify(e.candidate);
         const iceCandidate = this.createJson(this.idCorrespondent, candidate, 'ICE_CANDIDATE');
@@ -43,25 +40,26 @@ class App extends Component {
     const constraints = {video: true};
     //
     const success = (stream) => {
-      window.localStream = stream
-      this.localVideoref.current.srcObject = stream
+      window.localStream = stream;
+      this.localVideoref.current.srcObject = stream;
       this.pc.addStream(stream)
     };
     //
     const failure = (e) => {
-      console.log('getUserMedia Error: ', e);
+      console.log('getUserMedia Error: ' + e);
     };
     //
     //
-    navigator.mediaDevices.getUserMedia( constraints)
+    console.log("STARRT")
+    navigator.mediaDevices.getUserMedia(constraints)
         .then(success)
-        .then(failure);
+        .catch(failure);
   }
 
   createWebSocket = () => {
     const name = document.getElementById("name");
     const usersButton = document.getElementById("users");
-    this.socket = new WebSocket("ws://localhost:8080/socket?name=" + name.value);
+    this.socket = new WebSocket("ws://192.168.100.4:8080/socket?name=" + name.value);
     this.socket.onmessage = (event) => {
 
       const json = JSON.parse(event.data);
@@ -77,10 +75,11 @@ class App extends Component {
 
   setIceCandidate = (json) => {
     console.log("ПРИНЯЛ АЙСОВ")
-
     const iceCandidate = json.message;
-    console.log(iceCandidate)
-    this.pc.addIceCandidate(new RTCIceCandidate(iceCandidate));
+    const candidate = JSON.parse(iceCandidate);
+    console.log(candidate);
+    console.log(candidate.type)
+    this.pc.addIceCandidate(new RTCIceCandidate(candidate));
 
   };
 
