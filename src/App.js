@@ -20,10 +20,14 @@ class App extends Component {
     this.pc = new RTCPeerConnection(pc_config);
 
     this.pc.onicecandidate = (e) => {
-      if (e.candidate && this.idCorrespondent !== null && !this.isSendIceCandidate) {
-        this.isSendIceCandidate = true;
+      console.log("НАЧИНАЮ ГЕНЕРИТЬ айсов");
+      console.log(e.candidate);
+      if (e.candidate) {
         const candidate = JSON.stringify(e.candidate);
         const iceCandidate = this.createJson(this.idCorrespondent, candidate, 'ICE_CANDIDATE');
+        this.socket.send(JSON.stringify(iceCandidate));
+      } else {
+        const iceCandidate = this.createJson(this.idCorrespondent, null, 'ICE_CANDIDATE');
         this.socket.send(JSON.stringify(iceCandidate));
       }
     };
@@ -59,7 +63,7 @@ class App extends Component {
   createWebSocket = () => {
     const name = document.getElementById("name");
     const usersButton = document.getElementById("users");
-    this.socket = new WebSocket("ws://192.168.100.4:8080/socket?name=" + name.value);
+    this.socket = new WebSocket("ws://192.168.33.38:8080/socket?name=" + name.value);
     this.socket.onmessage = (event) => {
 
       const json = JSON.parse(event.data);
@@ -68,28 +72,31 @@ class App extends Component {
         case 'UPDATE_USERS': this.updateUsers(json.users, usersButton); break;
         case 'OFFER': this.setOffer(json); break;
         case 'ANSWER': this.setAnswer(json); break;
-        case 'ICE_CANDIDATE': this.setIceCandidate(json); break;
+        // case 'ICE_CANDIDATE': this.setIceCandidate(json); break;
       }
     };
   };
 
-  setIceCandidate = (json) => {
-    console.log("ПРИНЯЛ АЙСОВ")
-    const iceCandidate = json.message;
-    const candidate = JSON.parse(iceCandidate);
-    console.log(candidate);
-    console.log(candidate.type)
-    this.pc.addIceCandidate(new RTCIceCandidate(candidate));
-
-  };
+  // setIceCandidate = (json) => {
+  //   console.log("ПРИНЯЛ АЙСОВ");
+  //   const iceCandidate = json.message;
+  //   const candidate = JSON.parse(iceCandidate);
+  //   console.log(candidate);
+  //   console.log(candidate.type);
+  //   this.pc.addIceCandidate(new RTCIceCandidate(candidate));
+  // };
 
   setAnswer = async (answerJson) => {
-    const offer = answerJson.message;
-    this.pc.setRemoteDescription(new RTCSessionDescription(offer));
+    const answer = answerJson.message;
+    console.log("ПРИШЕЛ АНСВЕР");
+    console.log(answer);
+    this.pc.setRemoteDescription(new RTCSessionDescription(answer));
   };
 
   setOffer = async (offerJson) => {
     const offer = offerJson.message;
+    console.log("ПРИШЕЛ ОФЕР");
+    console.log(offer);
     this.pc.setRemoteDescription(new RTCSessionDescription(offer));
     const answer = await this.createAnswer();
     const jsonAnswer = this.createJson(offerJson.sessionId, answer, 'ANSWER');
@@ -139,7 +146,7 @@ class App extends Component {
   };
 
   createAnswer = async () => {
-    console.log('Answer');
+    console.log('Гененрируем ансвер');
     const sdp = await this.pc.createAnswer({offerToReceiveVideo: 1});
     this.pc.setLocalDescription(sdp);
     return sdp;
